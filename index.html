@@ -1,0 +1,189 @@
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, viewport-fit=cover" />
+    <title>WDNMD</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vant@2.12/lib/index.css" />
+
+    <!-- 引入 Vue 和 Vant 的 JS 文件 -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6/dist/vue.min.js"></script>
+    <script src="https://unpkg.com/vue-router@3.5.1/dist/vue-router.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vant@2.12/lib/vant.min.js"></script>
+    <style>
+        body {
+            color: #333;
+            background-color: #f8f8f8;
+        }
+
+        .nav {
+            position: relative;
+            display: -webkit-box;
+            display: -webkit-flex;
+            display: flex;
+            -webkit-box-align: center;
+            -webkit-align-items: center;
+            align-items: center;
+            -webkit-box-pack: center;
+            -webkit-justify-content: center;
+            justify-content: center;
+            height: 56px;
+            background-color: #fff;
+        }
+    </style>
+</head>
+
+<body>
+    <div id='app'>
+        <div>
+            <van-nav-bar title="电子土壤" placeholder fixed safe-area-inset-top border class="nav"></van-nav-bar>
+            <van-tabbar v-model="active">
+                <van-tabbar-item icon="video-o" v-on:click="redirectTo('videorec')">
+                        实时图像
+                </van-tabbar-item>
+                <van-tabbar-item icon="records" v-on:click="redirectTo('datalook')">
+                        数据监控
+                </van-tabbar-item>
+                <van-tabbar-item icon="setting-o" v-on:click="redirectTo('settings')">
+                        用户设置
+                </van-tabbar-item>
+            </van-tabbar>
+            <router-view v-bind:ws_addr="ws_addr" v-bind:frame_rate="frame_rate" v-bind:temp="temp"
+                v-bind:humidity="humidity"></router-view>
+        </div>
+    </div>
+    <template id='videorec'>
+        <div>
+            <van-grid square v-bind:column-num="1">
+                <van-grid-item v-bind:text="status">
+                    <van-image src="./nosignal.jfif"></van-image>
+                </van-grid-item>
+            </van-grid>
+            <div style="margin: 16px;margin-bottom:60px;">
+                <van-button round block type="info" native-type="submit" v-on:click="connectCamera" v-if="connected===false">连接{{ws_addr}}</van-button>
+                <van-button round block type="warning" v-on:click="disconnectCamera" native-type="submit" v-if="connected===true">断开连接 释放资源</van-button>
+            </div>
+        </div>
+    </template>
+    <template id='datalook'>
+        <van-grid :column-num="2">
+            <van-grid-item icon="ascending" v-bind:text="v_temp"></van-grid-item>
+            <van-grid-item icon="descending" v-bind:text="v_humidity"></van-grid-item>
+        </van-grid>
+    </template>
+    <template id='settings'>
+        <van-form>
+            <van-field v-model="ws_addr" name="ws_addr" label="摄像头地址"></van-field>
+            <van-field v-model="frame_rate" name="frame_rate" label="帧率"></van-field>
+            <div style="margin: 16px;margin-bottom:60px;">
+                <van-button round block type="info" native-type="submit">保存</van-button>
+            </div>
+        </van-form>
+    </template>
+    <script>
+        const videorec = Vue.component('videorec', {
+            props: ['ws_addr', 'frame_rate'],
+            data: function () {
+                return {
+                    status: '未连接摄像头',
+                    connected:false
+                }
+            },
+            template: '#videorec',
+            methods:{
+                connectCamera:function(){
+                    if(this.connected==false)
+                    {
+                        vant.Toast('已连接摄像头。');
+                        this.connected=true;
+                    }
+                    else{
+                        vant.Toast('您已连接摄像头，无法使用本功能。');
+                    }
+                },
+                disconnectCamera:function(){
+                    if(this.connected==true)
+                    {
+                        vant.Toast('已断开摄像头。');
+                        this.connected=false;
+                    }
+                    else{
+                        vant.Toast('您已断开摄像头，无法使用本功能。');
+                    }
+                }
+            }
+        });
+
+        const datalook = Vue.component('datalook', {
+            props: ['temp', 'humidity'],
+            computed: {
+                v_temp: function () {
+                    return '土壤温度:' + this.temp + ' °C';
+                },
+                v_humidity: function () {
+                    return '土壤湿度:' + this.humidity + ' %RH';
+                }
+            },
+            data: function () {
+                return {
+                    
+                }
+            },
+            template: '#datalook'
+        });
+
+        const settings = Vue.component('settings', {
+            props: ['ws_addr', 'frame_rate'],
+            data: function () {
+                return {
+                }
+            },
+            template: '#settings'
+        });
+
+        const routes = [
+            {path: '/', redirect: 'videorec'},
+            { path: '/videorec', component: videorec },
+            { path: '/datalook', component: datalook },
+            { path: '/settings', component: settings }
+        ];
+
+        const router = new VueRouter({
+            routes: routes // (缩写) 相当于 routes: routes
+        })
+
+        const app = new Vue({
+            el: '#app',
+            data: {
+                active: 0,
+                ws_addr: 'ws://192.168.0.100:9050/camera',
+                frame_rate: '30',
+                temp: '26',
+                humidity: '70'
+            },
+            router: router,
+            methods:{
+                redirectTo:function(url)
+                {
+                    window.location.href=window.location.pathname+'#/'+url;
+                }
+            }
+        });
+
+        Vue.use(VueRouter);
+
+        Vue.use(vant.NavBar);
+        Vue.use(vant.Tabbar);
+        Vue.use(vant.TabbarItem);
+        Vue.use(vant.Grid);
+        Vue.use(vant.GridItem);
+        Vue.use(vant.Button);
+        Vue.use(vant.Field);
+        Vue.use(vant.Toast);
+    </script>
+</body>
+
+</html>
